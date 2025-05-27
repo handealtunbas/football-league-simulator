@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Football League Simulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 40px;
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        select {
+            padding: 8px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #fff;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .panel {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            margin-bottom: 30px;
+        }
+
+        pre {
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<h1>⚽ Football League Simulator</h1>
+
+<div class="controls">
+    <button onclick="playWeek()">Play Week</button>
+    <button onclick="playAll()">Play All</button>
+    <button onclick="predict()">Predict Standings</button><br>
+    <label for="weekSelect">Show Results for Week:</label>
+    <select id="weekSelect" onchange="fetchResultsByWeek()">
+        <option value="1">Week 1</option>
+        <option value="2">Week 2</option>
+        <option value="3">Week 3</option>
+        <option value="4">Week 4</option>
+        <option value="5">Week 5</option>
+        <option value="6">Week 6</option>
+    </select>
+</div>
+
+<div class="panel">
+    <h2>League Table</h2>
+    <table id="standingsTable">
+        <thead>
+        <tr>
+            <th>Team</th><th>PTS</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div class="panel">
+    <h2>Match Results</h2>
+    <pre id="results">Select a week to view match results.</pre>
+</div>
+
+<div class="panel">
+    <h2>Championship Win Predictions</h2>
+    <pre id="prediction">Predictions will appear after Week 4.</pre>
+</div>
+
+<script>
+    function fetchStandings() {
+        fetch("/standings")
+            .then(res => res.text())
+            .then(data => {
+                const lines = data.trim().split("\n").slice(1);
+                const tbody = document.querySelector("#standingsTable tbody");
+                tbody.innerHTML = "";
+
+                lines.forEach(line => {
+                    const cleaned = line.replace(/\r/g, "").trim();
+                    const parts = cleaned.split("\t");
+                    if (parts.length !== 9) {
+                        console.warn("Invalid row skipped:", line);
+                        return;
+                    }
+
+                    const name = parts[0];
+                    const numbers = parts.slice(1);
+
+                    const row = `
+                    <tr>
+                      <td style="background: lightyellow">${name}</td>
+                      ${numbers.map(n => `<td>${isNaN(n) ? '-' : n}</td>`).join("")}
+                    </tr>
+                `;
+                    tbody.insertAdjacentHTML("beforeend", row);
+                });
+            });
+    }
+
+    function fetchResultsByWeek() {
+        const week = document.getElementById("weekSelect").value;
+        fetch(`/results?week=${week}`)
+            .then(res => res.text())
+            .then(data => {
+                document.getElementById("results").textContent = `Week ${week}\n\n${data}`;
+            });
+    }
+
+    function playWeek() {
+        fetch("/play-week", { method: "POST" })
+            .then(() => {
+                fetchStandings();
+                fetchResultsByWeek();
+            });
+    }
+
+    function playAll() {
+        fetch("/play-all", { method: "POST" })
+            .then(() => {
+                fetchStandings();
+                fetchResultsByWeek();
+            });
+    }
+
+    function predict() {
+        fetch("/predict")
+            .then(res => res.text())
+            .then(data => {
+                document.getElementById("prediction").textContent = data;
+            });
+    }
+
+    fetchStandings();
+    fetchResultsByWeek();
+</script>
+
+</body>
+</html>
